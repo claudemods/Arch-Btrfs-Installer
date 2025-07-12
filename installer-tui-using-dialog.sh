@@ -99,6 +99,9 @@ perform_installation() {
     cyan_output btrfs subvolume create /mnt/@tmp
     cyan_output btrfs subvolume create /mnt/@log
     cyan_output btrfs subvolume create /mnt/@cache
+    cyan_output mkdir -p /mnt/@/var/lib
+    cyan_output btrfs subvolume create /mnt/@/var/lib/portables
+    cyan_output btrfs subvolume create /mnt/@/var/lib/machines
     cyan_output umount /mnt
 
     # Remount with compression
@@ -111,6 +114,8 @@ perform_installation() {
     cyan_output mkdir -p /mnt/tmp
     cyan_output mkdir -p /mnt/var/cache
     cyan_output mkdir -p /mnt/var/log
+    cyan_output mkdir -p /mnt/var/lib/portables
+    cyan_output mkdir -p /mnt/var/lib/machines
     cyan_output mount -o subvol=@home,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/home
     cyan_output mount -o subvol=@root,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/root
     cyan_output mount -o subvol=@srv,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/srv
@@ -136,9 +141,12 @@ perform_installation() {
         "rEFInd") BASE_PKGS="$BASE_PKGS refind" ;;
     esac
     
-    if [ "$INITRAMFS" = "dracut" ]; then
-        BASE_PKGS="$BASE_PKGS dracut"
-    fi
+    # Add initramfs packages
+    case "$INITRAMFS" in
+        "mkinitcpio") BASE_PKGS="$BASE_PKGS" ;;
+        "dracut") BASE_PKGS="$BASE_PKGS dracut" ;;
+        "booster") BASE_PKGS="$BASE_PKGS booster" ;;
+    esac
     
     # Only add network manager if no desktop selected (for minimal install)
     if [ "$DESKTOP_ENV" = "None" ]; then
@@ -178,6 +186,8 @@ perform_installation() {
         echo "UUID=$ROOT_UUID /var/cache     btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@cache 0 0"
         echo "UUID=$ROOT_UUID /var/tmp       btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@tmp 0 0"
         echo "UUID=$ROOT_UUID /var/log       btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@log 0 0"
+        echo "UUID=$ROOT_UUID /var/lib/portables btrfs rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@/var/lib/portables 0 0"
+        echo "UUID=$ROOT_UUID /var/lib/machines btrfs rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@/var/lib/machines 0 0"
     } > /mnt/etc/fstab
 
     # Chroot setup
@@ -244,6 +254,9 @@ case "$INITRAMFS" in
         ;;
     "dracut")
         dracut --regenerate-all --force
+        ;;
+    "booster")
+        booster-generate
         ;;
 esac
 
@@ -448,9 +461,10 @@ configure_installation() {
         "Hardened" "Security-hardened kernel" 3>&1 1>&2 2>&3)
     
     # Initramfs selection
-    INITRAMFS=$(dialog --title "Initramfs Selection" --menu "Select initramfs generator:" 12 40 2 \
+    INITRAMFS=$(dialog --title "Initramfs Selection" --menu "Select initramfs generator:" 15 40 3 \
         "mkinitcpio" "Default Arch Linux initramfs" \
-        "dracut" "Alternative initramfs generator" 3>&1 1>&2 2>&3)
+        "dracut" "Alternative initramfs generator" \
+        "booster" "Fast initramfs generator" 3>&1 1>&2 2>&3)
     
     # Bootloader selection
     BOOTLOADER=$(dialog --title "Bootloader Selection" --menu "Select bootloader:" 15 40 3 \
