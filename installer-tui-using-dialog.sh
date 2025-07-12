@@ -15,12 +15,12 @@ NC='\033[0m'
 
 show_ascii() {
     clear
-    echo -e "${RED}░█████╗░██████╗░░█████╗░██╗░░██╗  ██╗░░░░░██╗███╗░░██╗██╗░░░██╗██╗░░░██╗
-██╔══██╗██╔══██╗██╔══██╗██║░░██║  ██║░░░░░██║████╗░██║╚██╗░██╔╝██║░░░██║
-███████║██████╔╝██║░░╚═╝███████║  ██║░░░░░██║██╔██╗██║░╚████╔╝░██║░░░██║
-██╔══██║██╔══██╗██║░░██╗██╔══██║  ██║░░░░░██║██║╚████║░░╚██╔╝░░██║░░░██║
-██║░░██║██║░░██║╚█████╔╝██║░░██║  ███████╗██║██║░╚███║░░░██║░░░╚██████╔╝
-╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░╚═╝░░╚═╝  ╚══════╝╚═╝╚═╝░░╚══╝░░░╚═╝░░░░╚═════╝░${NC}"
+    echo -e "${RED}░█████╗░██╗░░░░░░█████╗░██║░░░██╗██████╗░███████╗███╗░░░███╗░█████╗░██████╗░░██████╗
+██╔══██╗██║░░░░░██╔══██╗██║░░░██║██╔══██╗██╔════╝████╗░████║██╔══██╗██╔══██╗██╔════╝
+██║░░╚═╝██║░░░░░███████║██║░░░██║██║░░██║█████╗░░██╔████╔██║██║░░██║██║░░██║╚█████╗░
+██║░░██╗██║░░░░░██╔══██║██║░░░██║██║░░██║██╔══╝░░██║╚██╔╝██║██║░░██║██║░░██║░╚═══██╗
+╚█████╔╝███████╗██║░░██║╚██████╔╝██████╔╝███████╗██║░╚═╝░██║╚█████╔╝██████╔╝██████╔╝
+░╚════╝░╚══════╝╚═╝░░╚═╝░╚═════╝░╚═════╝░╚══════╝╚═╝░░░░░╚═╝░╚════╝░╚═════╝░╚═════╝░${NC}"
     echo -e "${CYAN}Arch Linux Btrfs Installer v1.0 12-07-2025${NC}"
     echo
 }
@@ -80,7 +80,7 @@ perform_installation() {
     cyan_output umount /mnt
 
     # Remount with compression
-    cyan_output mount -o subvol=@,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt
+    cyan_output mount -o subvol=@,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt
     cyan_output mkdir -p /mnt/boot/efi
     cyan_output mount "${TARGET_DISK}1" /mnt/boot/efi
     cyan_output mkdir -p /mnt/home
@@ -131,9 +131,21 @@ perform_installation() {
                 ;;
         esac
     done
-    touch /mnt/etc/fstab
-    # Generate fstab
-    cyan_output genfstab -U /mnt >> /mnt/etc/fstab
+
+    # Generate fstab using YOUR EXACT METHOD
+    echo -e "${CYAN}Generating fstab with BTRFS subvolumes...${NC}"
+    ROOT_UUID=$(blkid -s UUID -o value "${TARGET_DISK}2")
+    {
+        echo ""
+        echo "# Btrfs subvolumes (auto-added)"
+        echo "UUID=$ROOT_UUID /              btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@ 0 0"
+        echo "UUID=$ROOT_UUID /root          btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@root 0 0"
+        echo "UUID=$ROOT_UUID /home          btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@home 0 0"
+        echo "UUID=$ROOT_UUID /srv           btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@srv 0 0"
+        echo "UUID=$ROOT_UUID /var/cache     btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@cache 0 0"
+        echo "UUID=$ROOT_UUID /var/tmp       btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@tmp 0 0"
+        echo "UUID=$ROOT_UUID /var/log       btrfs   rw,noatime,compress=zstd:$COMPRESSION_LEVEL,discard=async,space_cache=v2,subvol=/@log 0 0"
+    } > /mnt/etc/fstab
 
     # Chroot setup
     cat << CHROOT | tee /mnt/setup-chroot.sh >/dev/null
@@ -160,6 +172,7 @@ echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
+
 # Network manager (only enable if no desktop selected)
 if [ "$DESKTOP_ENV" = "None" ]; then
     systemctl enable NetworkManager
@@ -168,9 +181,9 @@ fi
 # Install desktop environment and related packages only if selected
 case "$DESKTOP_ENV" in
     "KDE Plasma")
-        pacman -S --noconfirm plasma-meta kde-applications-meta sddm
+        pacman -S --noconfirm --disable-download-timeout plasma-meta kde-applications-meta sddm
         systemctl enable sddm
-        pacman -S --noconfirm firefox dolphin konsole pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox dolphin konsole pulseaudio pavucontrol
         ;;
     "GNOME")
         pacman -S --noconfirm --disable-download-timeout gnome gnome-extra gdm
@@ -211,7 +224,6 @@ case "$DESKTOP_ENV" in
         pacman -S --noconfirm --disable-download-timeout i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter
         systemctl enable lightdm
         pacman -S --noconfirm --disable-download-timeout firefox alacritty pulseaudio pavucontrol
-        pacman -S --noconfirm --disable-download-timeout firefox alacritty pulseaudio pavucontrol
         ;;
     "Sway")
         pacman -S --noconfirm --disable-download-timeout sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter
@@ -221,7 +233,7 @@ case "$DESKTOP_ENV" in
     "Hyprland")
         pacman -S --noconfirm --disable-download-timeout hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm  --disable-download-timeout firefox kitty pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox kitty pulseaudio pavucontrol
         
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
@@ -307,18 +319,24 @@ CHROOT
     umount -R /mnt
     echo -e "${CYAN}Installation complete!${NC}"
 
+    # Post-install dialog menu
     while true; do
-        echo -e "${CYAN}"
-        echo "Choose an option:"
-        echo "1) Reboot now"
-        echo "2) Chroot into installed system"
-        echo "3) Exit without rebooting"
-        echo -ne "Enter your choice (1-3): ${NC}"
-        read choice
+        choice=$(dialog --clear --title "Installation Complete" \
+                       --menu "Select post-install action:" 12 45 5 \
+                       1 "Reboot now" \
+                       2 "Chroot into installed system" \
+                       3 "Exit without rebooting" \
+                       3>&1 1>&2 2>&3)
 
         case $choice in
-            1) reboot ;;
+            1) 
+                clear
+                echo -e "${CYAN}Rebooting system...${NC}"
+                reboot
+                ;;
             2)
+                clear
+                echo -e "${CYAN}Entering chroot...${NC}"
                 mount "${TARGET_DISK}1" /mnt/boot/efi
                 mount -o subvol=@ "${TARGET_DISK}2" /mnt
                 mount -t proc none /mnt/proc
@@ -328,8 +346,13 @@ CHROOT
                 arch-chroot /mnt /bin/bash
                 umount -R /mnt
                 ;;
-            3) exit 0 ;;
-            *) echo -e "${CYAN}Invalid option. Please try again.${NC}" ;;
+            3)
+                clear
+                exit 0
+                ;;
+            *)
+                echo -e "${CYAN}Invalid option selected${NC}"
+                ;;
         esac
     done
 }
