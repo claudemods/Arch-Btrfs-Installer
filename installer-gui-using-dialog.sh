@@ -48,6 +48,8 @@ perform_installation() {
     echo "Keymap: $KEYMAP"
     echo "Username: $USER_NAME"
     echo "Desktop: $DESKTOP_ENV"
+    echo "Kernel: $KERNEL_TYPE"
+    echo "Repositories: ${REPOS[@]}"
     echo "Compression Level: $COMPRESSION_LEVEL${NC}"
     echo -ne "${CYAN}Continue? (y/n): ${NC}"
     read confirm
@@ -94,8 +96,34 @@ perform_installation() {
     cyan_output mount -o subvol=@log,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/log
     cyan_output mount -o subvol=@cache,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/cache
 
-    # Base system installation
-    cyan_output pacstrap /mnt base base-devel linux linux-firmware btrfs-progs grub efibootmgr dosfstools nano
+    # Determine kernel package based on selection
+    case "$KERNEL_TYPE" in
+        "Standard") KERNEL_PKG="linux" ;;
+        "LTS") KERNEL_PKG="linux-lts" ;;
+        "Zen") KERNEL_PKG="linux-zen" ;;
+        "Hardened") KERNEL_PKG="linux-hardened" ;;
+    esac
+
+    # Base system installation with selected kernel
+    cyan_output pacstrap /mnt base base-devel $KERNEL_PKG linux-firmware btrfs-progs grub efibootmgr dosfstools nano
+
+    # Add selected repositories
+    for repo in "${REPOS[@]}"; do
+        case "$repo" in
+            "multilib")
+                echo -e "${CYAN}Enabling multilib repository...${NC}"
+                sed -i '/\[multilib\]/,/Include/s/^#//' /mnt/etc/pacman.conf
+                ;;
+            "testing")
+                echo -e "${CYAN}Enabling testing repository...${NC}"
+                sed -i '/\[testing\]/,/Include/s/^#//' /mnt/etc/pacman.conf
+                ;;
+            "community-testing")
+                echo -e "${CYAN}Enabling community-testing repository...${NC}"
+                sed -i '/\[community-testing\]/,/Include/s/^#//' /mnt/etc/pacman.conf
+                ;;
+        esac
+    done
 
     # Generate fstab
     cyan_output genfstab -U /mnt >> /mnt/etc/fstab
@@ -174,7 +202,7 @@ case "$DESKTOP_ENV" in
     "Hyprland")
         pacman -S --noconfirm hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-
+        
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
         cat > /home/$USER_NAME/.config/hypr/hyprland.conf << 'HYPRCONFIG'
@@ -236,7 +264,7 @@ bind = SUPER, D, exec, rofi -show drun
 bind = SUPER, P, pseudo,
 bind = SUPER, J, togglesplit,
 HYPRCONFIG
-
+        
         # Set ownership of config files
         chown -R $USER_NAME:$USER_NAME /home/$USER_NAME/.config
         ;;
@@ -296,7 +324,45 @@ configure_installation() {
     USER_NAME=$(dialog --title "Username" --inputbox "Enter username:" 8 40 3>&1 1>&2 2>&3)
     USER_PASSWORD=$(dialog --title "User Password" --passwordbox "Enter user password:" 8 40 3>&1 1>&2 2>&3)
     ROOT_PASSWORD=$(dialog --title "Root Password" --passwordbox "Enter root password:" 8 40 3>&1 1>&2 2>&3)
-    DESKTOP_ENV=$(dialog --title "Desktop Environment" --menu "Select desktop:" 20 50 11 \
+    
+    # Kernel selection
+    KERNEL_TYPE=$(dialog --title "Kernel Selection" --menu "Select kernel:" 15 40 4 \
+        "Standard" "Standard Arch Linux kernel" \
+        "LTS" "Long-term support kernel" \
+        "Zen" "Zen kernel (optimized for desktop)" \
+        "Hardened" "Security-hardened kernel" 3>&1 1>&2 2>&3)
+    
+    # Repository selection
+    REPOS=()
+    repo_options=()
+    repo_status=()
+    
+    # Check current repo status in pacman.conf to set defaults
+    if grep -q "^\[multilib\]" /etc/pacman.conf; then
+        repo_status+=("on")
+    else
+        repo_status+=("off")
+    fi
+    repo_options+=("multilib" "32-bit software support" ${repo_status[0]})
+    
+    if grep -q "^\[testing\]" /etc/pacman.conf; then
+        repo_status+=("on")
+    else
+        repo_status+=("off")
+    fi
+    repo_options+=("testing" "Testing repository" ${repo_status[1]})
+    
+    if grep -q "^\[community-testing\]" /etc/pacman.conf; then
+        repo_status+=("on")
+    else
+        repo_status+=("off")
+    fi
+    repo_options+=("community-testing" "Community testing repository" ${repo_status[2]})
+    
+    REPOS=($(dialog --title "Additional Repositories" --checklist "Enable additional repositories:" 15 50 5 \
+        "${repo_options[@]}" 3>&1 1>&2 2>&3))
+    
+    DESKTOP_ENV=$(dialog --title "Desktop Environment" --menu "Select desktop:" 20 50 12 \
         "KDE Plasma" "KDE Plasma Desktop (plasma-meta)" \
         "GNOME" "GNOME Desktop (gnome)" \
         "XFCE" "XFCE Desktop (xfce4)" \
@@ -309,10 +375,10 @@ configure_installation() {
         "Sway" "Sway Wayland Compositor (sway)" \
         "Hyprland" "Hyprland Wayland Compositor (hyprland)" \
         "None" "No desktop environment" 3>&1 1>&2 2>&3)
-    COMPRESSION_LEVEL=$(dialog --title "Compression Level" --inputbox "Enter BTRFS compression level (1-22, default is 3):" 8 40 3 3>&1 1>&2 2>&3)
-
+    COMPRESSION_LEVEL=$(dialog --title "Compression Level" --inputbox "Enter BTRFS compression level (0-22, default is 3):" 8 40 3 3>&1 1>&2 2>&3)
+    
     # Validate compression level
-    if ! [[ "$COMPRESSION_LEVEL" =~ ^[0-9]+$ ]] || [ "$COMPRESSION_LEVEL" -lt 1 ] || [ "$COMPRESSION_LEVEL" -gt 22 ]; then
+    if ! [[ "$COMPRESSION_LEVEL" =~ ^[0-9]+$ ]] || [ "$COMPRESSION_LEVEL" -lt 0 ] || [ "$COMPRESSION_LEVEL" -gt 22 ]; then
         dialog --msgbox "Invalid compression level. Using default (3)." 6 40
         COMPRESSION_LEVEL=3
     fi
@@ -320,7 +386,7 @@ configure_installation() {
 
 main_menu() {
     while true; do
-        choice=$(dialog --clear --title "Arch Linux Btrfs Installer v1.0 12-07-2025" \
+        choice=$(dialog --clear --title "Arch Linux Btrfs Installer" \
                        --menu "Select option:" 15 45 5 \
                        1 "Configure Installation" \
                        2 "Start Installation" \
