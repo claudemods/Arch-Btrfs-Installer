@@ -112,7 +112,7 @@ perform_installation() {
         BASE_PKGS="$BASE_PKGS networkmanager"
     fi
 
-    cyan_output pacstrap /mnt $BASE_PKGS
+    cyan_output pacstrap --disable-download-timeout /mnt $BASE_PKGS
 
     # Add selected repositories
     for repo in "${REPOS[@]}"; do
