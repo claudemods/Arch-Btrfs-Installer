@@ -89,12 +89,12 @@ perform_installation() {
     cyan_output mkdir -p /mnt/tmp
     cyan_output mkdir -p /mnt/var/cache
     cyan_output mkdir -p /mnt/var/log
-    cyan_output mount -o subvol=@home,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/home
-    cyan_output mount -o subvol=@root,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/root
-    cyan_output mount -o subvol=@srv,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/srv
-    cyan_output mount -o subvol=@tmp,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/tmp
-    cyan_output mount -o subvol=@log,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/log
-    cyan_output mount -o subvol=@cache,compress=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/cache
+    cyan_output mount -o subvol=@home,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/home
+    cyan_output mount -o subvol=@root,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/root
+    cyan_output mount -o subvol=@srv,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/srv
+    cyan_output mount -o subvol=@tmp,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/tmp
+    cyan_output mount -o subvol=@log,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/log
+    cyan_output mount -o subvol=@cache,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/var/cache
 
     # Determine kernel package based on selection
     case "$KERNEL_TYPE" in
@@ -131,7 +131,7 @@ perform_installation() {
                 ;;
         esac
     done
-
+    touch /mnt/etc/fstab
     # Generate fstab
     cyan_output genfstab -U /mnt >> /mnt/etc/fstab
 
