@@ -88,3 +88,6 @@ chmod +x *.sh
   <p>Feel free to fork or contribute to this project! 🚀</p>
   <p>For issues or feature requests, please open an issue on GitHub.</p>
 </div>
+
+  <p><a href="https://drive.google.com/drive/folders/10YCL4YGGDjr5QiBuA-3Wx40EX2SnsVkA">Download Arch Btrfs Installer 1.1gb .img.xz</a></p>
+</div>
