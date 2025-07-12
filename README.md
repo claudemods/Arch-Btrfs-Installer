@@ -49,7 +49,7 @@
 <div align="center">
   <h3>🗂️ Btrfs Subvolumes</h3>
   <p align="center">
-    <strong>@ @home @root @srv @tmp @log @cache</strong><br>
+    <strong>@ @root @home @srv @cache @tmp @log @var/lib/portables @var/lib/machines</strong><br>
     <em>All with zstd compression at your chosen level</em>
   </p>
 </div>
