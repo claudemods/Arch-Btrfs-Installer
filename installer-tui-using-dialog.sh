@@ -173,54 +173,55 @@ case "$DESKTOP_ENV" in
         pacman -S --noconfirm firefox dolphin konsole pulseaudio pavucontrol
         ;;
     "GNOME")
-        pacman -S --noconfirm gnome gnome-extra gdm
+        pacman -S --noconfirm --disable-download-timeout gnome gnome-extra gdm
         systemctl enable gdm
-        pacman -S --noconfirm firefox gnome-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox gnome-terminal pulseaudio pavucontrol
         ;;
     "XFCE")
-        pacman -S --noconfirm xfce4 xfce4-goodies lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout xfce4 xfce4-goodies lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox mousepad xfce4-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox mousepad xfce4-terminal pulseaudio pavucontrol
         ;;
     "MATE")
-        pacman -S --noconfirm mate mate-extra mate-media lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout mate mate-extra mate-media lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox pluma mate-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox pluma mate-terminal pulseaudio pavucontrol
         ;;
     "LXQt")
-        pacman -S --noconfirm lxqt breeze-icons sddm
+        pacman -S --noconfirm --disable-download-timeout lxqt breeze-icons sddm
         systemctl enable sddm
-        pacman -S --noconfirm firefox qterminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox qterminal pulseaudio pavucontrol
         ;;
     "Cinnamon")
-        pacman -S --noconfirm cinnamon cinnamon-translations lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout cinnamon cinnamon-translations lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox xed gnome-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox xed gnome-terminal pulseaudio pavucontrol
         ;;
     "Budgie")
-        pacman -S --noconfirm budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol
         ;;
     "Deepin")
-        pacman -S --noconfirm deepin deepin-extra lightdm
+        pacman -S --noconfirm --disable-download-timeout deepin deepin-extra lightdm
         systemctl enable lightdm
-        pacman -S --noconfirm firefox deepin-terminal pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox deepin-terminal pulseaudio pavucontrol
         ;;
     "i3")
-        pacman -S --noconfirm i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox alacritty pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox alacritty pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox alacritty pulseaudio pavucontrol
         ;;
     "Sway")
-        pacman -S --noconfirm sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox foot pulseaudio pavucontrol
+        pacman -S --noconfirm --disable-download-timeout firefox foot pulseaudio pavucontrol
         ;;
     "Hyprland")
-        pacman -S --noconfirm hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
+        pacman -S --noconfirm --disable-download-timeout hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
         systemctl enable lightdm
-        pacman -S --noconfirm firefox kitty pulseaudio pavucontrol
+        pacman -S --noconfirm  --disable-download-timeout firefox kitty pulseaudio pavucontrol
         
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
