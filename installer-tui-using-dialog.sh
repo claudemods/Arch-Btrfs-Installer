@@ -21,7 +21,7 @@ show_ascii() {
 ██║░░██╗██║░░░░░██╔══██║██║░░░██║██║░░██║██╔══╝░░██║╚██╔╝██║██║░░██║██║░░██║░╚═══██╗
 ╚█████╔╝███████╗██║░░██║╚██████╔╝██████╔╝███████╗██║░╚═╝░██║╚█████╔╝██████╔╝██████╔╝
 ░╚════╝░╚══════╝╚═╝░░╚═╝░╚═════╝░╚═════╝░╚══════╝╚═╝░░░░░╚═╝░╚════╝░╚═════╝░╚═════╝░${NC}"
-    echo -e "${CYAN}Arch Linux Btrfs Installer v1.0 12-07-2025${NC}"
+    echo -e "${CYAN}Arch Linux Btrfs Installer v1.01 12-07-2025${NC}"
     echo
 }
 
@@ -526,7 +526,7 @@ configure_installation() {
 
 main_menu() {
     while true; do
-        choice=$(dialog --clear --title "Arch Linux Btrfs Installer v1.0 12-07-2025" \
+        choice=$(dialog --clear --title "Arch Linux Btrfs Installer v1.01 12-07-2025" \
                        --menu "Select option:" 15 45 6 \
                        1 "Configure Installation" \
                        2 "Find Fastest Mirrors" \
