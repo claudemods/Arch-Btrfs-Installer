@@ -112,7 +112,9 @@ perform_installation() {
         BASE_PKGS="$BASE_PKGS networkmanager"
     fi
 
-    cyan_output pacstrap --disable-download-timeout /mnt $BASE_PKGS
+    cyan_output pacstrap -i /mnt $BASE_PKGS --disable-download-timeout
+
+    cyan_output touch /mnt/etc/fstab
 
     # Add selected repositories
     for repo in "${REPOS[@]}"; do
@@ -181,59 +183,59 @@ fi
 # Install desktop environment and related packages only if selected
 case "$DESKTOP_ENV" in
     "KDE Plasma")
-        pacstrap --disable-download-timeout /mnt plasma-meta kde-applications-meta sddm
+        pacstrap -i /mnt plasma-meta kde-applications-meta sddm --disable-download-timeout
         systemctl enable sddm
-        pacstrap --disable-download-timeout /mnt firefox dolphin konsole pulseaudio pavucontrol
+        pacstrap -i /mnt firefox dolphin konsole pulseaudio pavucontrol --disable-download-timeout
         ;;
     "GNOME")
-        pacstrap --disable-download-timeout /mnt gnome gnome-extra gdm
+        pacstrap -i /mnt gnome gnome-extra gdm --disable-download-timeout
         systemctl enable gdm
-        pacstrap --disable-download-timeout /mnt firefox gnome-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox gnome-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "XFCE")
-        pacstrap --disable-download-timeout /mnt xfce4 xfce4-goodies lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt xfce4 xfce4-goodies lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox mousepad xfce4-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox mousepad xfce4-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "MATE")
-        pacstrap --disable-download-timeout /mnt mate mate-extra mate-media lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt mate mate-extra mate-media lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox pluma mate-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox pluma mate-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "LXQt")
-        pacstrap --disable-download-timeout /mnt lxqt breeze-icons sddm
+        pacstrap -i /mnt lxqt breeze-icons sddm --disable-download-timeout
         systemctl enable sddm
-        pacstrap --disable-download-timeout /mnt firefox qterminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox qterminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "Cinnamon")
-        pacstrap --disable-download-timeout /mnt cinnamon cinnamon-translations lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt cinnamon cinnamon-translations lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox xed gnome-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox xed gnome-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "Budgie")
-        pacstrap --disable-download-timeout /mnt budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "Deepin")
-        pacstrap --disable-download-timeout /mnt deepin deepin-extra lightdm
+        pacstrap -i /mnt deepin deepin-extra lightdm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox deepin-terminal pulseaudio pavucontrol
+        pacstrap -i /mnt firefox deepin-terminal pulseaudio pavucontrol --disable-download-timeout
         ;;
     "i3")
-        pacstrap --disable-download-timeout /mnt i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox alacritty pulseaudio pavucontrol
+        pacstrap -i /mnt firefox alacritty pulseaudio pavucontrol --disable-download-timeout
         ;;
     "Sway")
-        pacstrap --disable-download-timeout /mnt sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox foot pulseaudio pavucontrol
+        pacstrap -i /mnt firefox foot pulseaudio pavucontrol --disable-download-timeout
         ;;
     "Hyprland")
-        pacstrap --disable-download-timeout /mnt hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
+        pacstrap -i /mnt hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter --disable-download-timeout
         systemctl enable lightdm
-        pacstrap --disable-download-timeout /mnt firefox kitty pulseaudio pavucontrol
+        pacstrap -i /mnt firefox kitty pulseaudio pavucontrol --disable-download-timeout
         
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
