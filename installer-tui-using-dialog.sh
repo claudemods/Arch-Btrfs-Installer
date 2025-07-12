@@ -29,6 +29,26 @@ cyan_output() {
     "$@" | while IFS= read -r line; do echo -e "${CYAN}$line${NC}"; done
 }
 
+configure_fastest_mirrors() {
+    show_ascii
+    dialog --title "Fastest Mirrors" --yesno "Would you like to find and use the fastest mirrors?" 7 50
+    response=$?
+    case $response in
+        0) 
+            echo -e "${CYAN}Finding fastest mirrors...${NC}"
+            pacman -Sy --noconfirm reflector >/dev/null 2>&1
+            reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+            echo -e "${CYAN}Mirrorlist updated with fastest mirrors${NC}"
+            ;;
+        1) 
+            echo -e "${CYAN}Using default mirrors${NC}"
+            ;;
+        255) 
+            echo -e "${CYAN}Using default mirrors${NC}"
+            ;;
+    esac
+}
+
 perform_installation() {
     show_ascii
 
@@ -49,6 +69,8 @@ perform_installation() {
     echo "Username: $USER_NAME"
     echo "Desktop: $DESKTOP_ENV"
     echo "Kernel: $KERNEL_TYPE"
+    echo "Initramfs: $INITRAMFS"
+    echo "Bootloader: $BOOTLOADER"
     echo "Repositories: ${REPOS[@]}"
     echo "Compression Level: $COMPRESSION_LEVEL${NC}"
     echo -ne "${CYAN}Continue? (y/n): ${NC}"
@@ -104,17 +126,26 @@ perform_installation() {
         "Hardened") KERNEL_PKG="linux-hardened" ;;
     esac
 
-    # Absolute minimal base packages
-    BASE_PKGS="base $KERNEL_PKG linux-firmware btrfs-progs grub efibootmgr dosfstools nano"
+    # Base packages based on initramfs and bootloader selection
+    BASE_PKGS="base $KERNEL_PKG linux-firmware btrfs-progs nano"
+    
+    # Add bootloader packages
+    case "$BOOTLOADER" in
+        "GRUB") BASE_PKGS="$BASE_PKGS grub efibootmgr dosfstools" ;;
+        "systemd-boot") BASE_PKGS="$BASE_PKGS efibootmgr" ;;
+        "rEFInd") BASE_PKGS="$BASE_PKGS refind" ;;
+    esac
+    
+    if [ "$INITRAMFS" = "dracut" ]; then
+        BASE_PKGS="$BASE_PKGS dracut"
+    fi
     
     # Only add network manager if no desktop selected (for minimal install)
     if [ "$DESKTOP_ENV" = "None" ]; then
         BASE_PKGS="$BASE_PKGS networkmanager"
     fi
 
-    cyan_output pacstrap -i /mnt $BASE_PKGS --disable-download-timeout
-
-    cyan_output touch /mnt/etc/fstab
+    cyan_output pacstrap -i /mnt $BASE_PKGS --noconfirm --disable-download-timeout
 
     # Add selected repositories
     for repo in "${REPOS[@]}"; do
@@ -134,7 +165,7 @@ perform_installation() {
         esac
     done
 
-    # Generate fstab using YOUR EXACT METHOD
+    # Generate fstab
     echo -e "${CYAN}Generating fstab with BTRFS subvolumes...${NC}"
     ROOT_UUID=$(blkid -s UUID -o value "${TARGET_DISK}2")
     {
@@ -170,10 +201,51 @@ echo "$USER_NAME:$USER_PASSWORD" | chpasswd
 # Configure sudo
 echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
 
-# Install bootloader
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
-grub-mkconfig -o /boot/grub/grub.cfg
-mkinitcpio -P
+# Handle bootloader installation
+case "$BOOTLOADER" in
+    "GRUB")
+        grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
+        grub-mkconfig -o /boot/grub/grub.cfg
+        ;;
+    "systemd-boot")
+        bootctl --path=/boot/efi install
+        mkdir -p /boot/efi/loader/entries
+        cat > /boot/efi/loader/loader.conf << 'LOADER'
+default arch
+timeout 3
+editor  yes
+LOADER
+
+        cat > /boot/efi/loader/entries/arch.conf << 'ENTRY'
+title   Arch Linux
+linux   /vmlinuz-$KERNEL_PKG
+initrd  /initramfs-$KERNEL_PKG.img
+options root=UUID=$ROOT_UUID rootflags=subvol=@ rw
+ENTRY
+        ;;
+    "rEFInd")
+        refind-install
+        mkdir -p /boot/efi/EFI/refind/refind.conf
+        cat > /boot/efi/EFI/refind/refind.conf << 'REFIND'
+menuentry "Arch Linux" {
+    icon     /EFI/refind/icons/os_arch.png
+    loader   /vmlinuz-$KERNEL_PKG
+    initrd   /initramfs-$KERNEL_PKG.img
+    options  "root=UUID=$ROOT_UUID rootflags=subvol=@ rw"
+}
+REFIND
+        ;;
+esac
+
+# Handle initramfs based on selection
+case "$INITRAMFS" in
+    "mkinitcpio")
+        mkinitcpio -P
+        ;;
+    "dracut")
+        dracut --regenerate-all --force
+        ;;
+esac
 
 # Network manager (only enable if no desktop selected)
 if [ "$DESKTOP_ENV" = "None" ]; then
@@ -183,59 +255,59 @@ fi
 # Install desktop environment and related packages only if selected
 case "$DESKTOP_ENV" in
     "KDE Plasma")
-        pacstrap -i /mnt plasma-meta kde-applications-meta sddm --disable-download-timeout
+        pacstrap -i /mnt plasma-meta kde-applications-meta sddm --noconfirm --disable-download-timeout
         systemctl enable sddm
-        pacstrap -i /mnt firefox dolphin konsole pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox dolphin konsole pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "GNOME")
-        pacstrap -i /mnt gnome gnome-extra gdm --disable-download-timeout
+        pacstrap -i /mnt gnome gnome-extra gdm --noconfirm --disable-download-timeout
         systemctl enable gdm
-        pacstrap -i /mnt firefox gnome-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox gnome-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "XFCE")
-        pacstrap -i /mnt xfce4 xfce4-goodies lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt xfce4 xfce4-goodies lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox mousepad xfce4-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox mousepad xfce4-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "MATE")
-        pacstrap -i /mnt mate mate-extra mate-media lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt mate mate-extra mate-media lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox pluma mate-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox pluma mate-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "LXQt")
-        pacstrap -i /mnt lxqt breeze-icons sddm --disable-download-timeout
+        pacstrap -i /mnt lxqt breeze-icons sddm --noconfirm --disable-download-timeout
         systemctl enable sddm
-        pacstrap -i /mnt firefox qterminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox qterminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "Cinnamon")
-        pacstrap -i /mnt cinnamon cinnamon-translations lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt cinnamon cinnamon-translations lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox xed gnome-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox xed gnome-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "Budgie")
-        pacstrap -i /mnt budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "Deepin")
-        pacstrap -i /mnt deepin deepin-extra lightdm --disable-download-timeout
+        pacstrap -i /mnt deepin deepin-extra lightdm --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox deepin-terminal pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox deepin-terminal pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "i3")
-        pacstrap -i /mnt i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox alacritty pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox alacritty pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "Sway")
-        pacstrap -i /mnt sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox foot pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox foot pulseaudio pavucontrol --noconfirm --disable-download-timeout
         ;;
     "Hyprland")
-        pacstrap -i /mnt hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter --disable-download-timeout
+        pacstrap -i /mnt hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter --noconfirm --disable-download-timeout
         systemctl enable lightdm
-        pacstrap -i /mnt firefox kitty pulseaudio pavucontrol --disable-download-timeout
+        pacstrap -i /mnt firefox kitty pulseaudio pavucontrol --noconfirm --disable-download-timeout
         
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
@@ -375,6 +447,17 @@ configure_installation() {
         "Zen" "Zen kernel (optimized for desktop)" \
         "Hardened" "Security-hardened kernel" 3>&1 1>&2 2>&3)
     
+    # Initramfs selection
+    INITRAMFS=$(dialog --title "Initramfs Selection" --menu "Select initramfs generator:" 12 40 2 \
+        "mkinitcpio" "Default Arch Linux initramfs" \
+        "dracut" "Alternative initramfs generator" 3>&1 1>&2 2>&3)
+    
+    # Bootloader selection
+    BOOTLOADER=$(dialog --title "Bootloader Selection" --menu "Select bootloader:" 15 40 3 \
+        "GRUB" "GRUB (recommended for most users)" \
+        "systemd-boot" "Minimal systemd-boot" \
+        "rEFInd" "Graphical UEFI boot manager" 3>&1 1>&2 2>&3)
+    
     # Repository selection
     REPOS=()
     repo_options=()
@@ -430,21 +513,23 @@ configure_installation() {
 main_menu() {
     while true; do
         choice=$(dialog --clear --title "Arch Linux Btrfs Installer v1.0 12-07-2025" \
-                       --menu "Select option:" 15 45 5 \
+                       --menu "Select option:" 15 45 6 \
                        1 "Configure Installation" \
-                       2 "Start Installation" \
-                       3 "Exit" 3>&1 1>&2 2>&3)
+                       2 "Find Fastest Mirrors" \
+                       3 "Start Installation" \
+                       4 "Exit" 3>&1 1>&2 2>&3)
 
         case $choice in
             1) configure_installation ;;
-            2)
+            2) configure_fastest_mirrors ;;
+            3)
                 if [ -z "$TARGET_DISK" ]; then
                     dialog --msgbox "Please configure installation first!" 6 40
                 else
                     perform_installation
                 fi
                 ;;
-            3) clear; exit 0 ;;
+            4) clear; exit 0 ;;
         esac
     done
 }
