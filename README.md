@@ -55,6 +55,13 @@
 </div>
 
 <div align="center">
+  <h3>🗂️ Dependencies</h3>
+  <p align="center">
+    <strong>btrfs-progs dosfstools arch-install-scripts dialog</strong><br>
+  </p>
+</div>
+
+<div align="center">
   <h3>🚀 Getting Started</h3>
   <p>Install git and then in terminal:</p>
 
