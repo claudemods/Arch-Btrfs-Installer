@@ -104,8 +104,15 @@ perform_installation() {
         "Hardened") KERNEL_PKG="linux-hardened" ;;
     esac
 
-    # Base system installation with selected kernel
-    cyan_output pacstrap /mnt base base-devel $KERNEL_PKG linux-firmware btrfs-progs grub efibootmgr dosfstools nano
+    # Absolute minimal base packages
+    BASE_PKGS="base $KERNEL_PKG linux-firmware btrfs-progs grub efibootmgr dosfstools nano"
+    
+    # Only add network manager if no desktop selected (for minimal install)
+    if [ "$DESKTOP_ENV" = "None" ]; then
+        BASE_PKGS="$BASE_PKGS networkmanager"
+    fi
+
+    cyan_output pacstrap /mnt $BASE_PKGS
 
     # Add selected repositories
     for repo in "${REPOS[@]}"; do
@@ -153,56 +160,67 @@ echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
+# Network manager (only enable if no desktop selected)
+if [ "$DESKTOP_ENV" = "None" ]; then
+    systemctl enable NetworkManager
+fi
 
-# Network manager
-pacman -S --noconfirm networkmanager
-systemctl enable NetworkManager
-
-# Install desktop environment
+# Install desktop environment and related packages only if selected
 case "$DESKTOP_ENV" in
     "KDE Plasma")
         pacman -S --noconfirm plasma-meta kde-applications-meta sddm
         systemctl enable sddm
+        pacman -S --noconfirm firefox dolphin konsole pulseaudio pavucontrol
         ;;
     "GNOME")
         pacman -S --noconfirm gnome gnome-extra gdm
         systemctl enable gdm
+        pacman -S --noconfirm firefox gnome-terminal pulseaudio pavucontrol
         ;;
     "XFCE")
         pacman -S --noconfirm xfce4 xfce4-goodies lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox mousepad xfce4-terminal pulseaudio pavucontrol
         ;;
     "MATE")
         pacman -S --noconfirm mate mate-extra mate-media lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox pluma mate-terminal pulseaudio pavucontrol
         ;;
     "LXQt")
         pacman -S --noconfirm lxqt breeze-icons sddm
         systemctl enable sddm
+        pacman -S --noconfirm firefox qterminal pulseaudio pavucontrol
         ;;
     "Cinnamon")
         pacman -S --noconfirm cinnamon cinnamon-translations lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox xed gnome-terminal pulseaudio pavucontrol
         ;;
     "Budgie")
         pacman -S --noconfirm budgie-desktop budgie-extras gnome-control-center gnome-terminal lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox gnome-text-editor gnome-terminal pulseaudio pavucontrol
         ;;
     "Deepin")
         pacman -S --noconfirm deepin deepin-extra lightdm
         systemctl enable lightdm
+        pacman -S --noconfirm firefox deepin-terminal pulseaudio pavucontrol
         ;;
     "i3")
         pacman -S --noconfirm i3-wm i3status i3lock dmenu lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox alacritty pulseaudio pavucontrol
         ;;
     "Sway")
         pacman -S --noconfirm sway swaylock swayidle waybar wofi lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox foot pulseaudio pavucontrol
         ;;
     "Hyprland")
         pacman -S --noconfirm hyprland waybar rofi wofi kitty swaybg swaylock-effects wl-clipboard lightdm lightdm-gtk-greeter
         systemctl enable lightdm
+        pacman -S --noconfirm firefox kitty pulseaudio pavucontrol
         
         # Create Hyprland config directory
         mkdir -p /home/$USER_NAME/.config/hypr
@@ -270,12 +288,10 @@ HYPRCONFIG
         chown -R $USER_NAME:$USER_NAME /home/$USER_NAME/.config
         ;;
     "None")
-        echo "No desktop environment selected"
+        # Install nothing extra for minimal system
+        echo "No desktop environment selected - minimal installation"
         ;;
 esac
-
-# Additional common packages
-pacman -Sy --noconfirm firefox alacritty pulseaudio pavucontrol
 
 # Enable TRIM for SSDs
 systemctl enable fstrim.timer
@@ -375,7 +391,7 @@ configure_installation() {
         "i3" "i3 Window Manager (i3-wm)" \
         "Sway" "Sway Wayland Compositor (sway)" \
         "Hyprland" "Hyprland Wayland Compositor (hyprland)" \
-        "None" "No desktop environment" 3>&1 1>&2 2>&3)
+        "None" "No desktop environment (minimal install)" 3>&1 1>&2 2>&3)
     COMPRESSION_LEVEL=$(dialog --title "Compression Level" --inputbox "Enter BTRFS compression level (0-22, default is 3):" 8 40 3 3>&1 1>&2 2>&3)
     
     # Validate compression level
@@ -387,7 +403,7 @@ configure_installation() {
 
 main_menu() {
     while true; do
-        choice=$(dialog --clear --title "Arch Linux Btrfs Installer" \
+        choice=$(dialog --clear --title "Arch Linux Btrfs Installer v1.0 12-07-2025" \
                        --menu "Select option:" 15 45 5 \
                        1 "Configure Installation" \
                        2 "Start Installation" \
