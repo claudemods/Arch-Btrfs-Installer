@@ -114,6 +114,7 @@ perform_installation() {
     cyan_output mkdir -p /mnt/tmp
     cyan_output mkdir -p /mnt/var/cache
     cyan_output mkdir -p /mnt/var/log
+    cyan_output mkdir -p /mnt/var/lib
     cyan_output mkdir -p /mnt/var/lib/portables
     cyan_output mkdir -p /mnt/var/lib/machines
     cyan_output mount -o subvol=@home,compress=zstd:$COMPRESSION_LEVEL,compress-force=zstd:$COMPRESSION_LEVEL "${TARGET_DISK}2" /mnt/home
