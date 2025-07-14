@@ -1,5 +1,4 @@
-
-latest kernels are corrupt lol so we will be waiting a while now blame the testers
+repos are slow/basically rubbish needs fixing
 
 
 <p align="center">
